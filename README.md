@@ -18,11 +18,11 @@ Fetch your LLM (gemma2:9b by default):
 ```sh
 ollama pull gemma2:9b
 ```
-<!-- ### Ingestor
+### Ingestor
 
 Extracts text from PDF documents and creates chunks (using semantic and character splitter) that are stored in a vector databse
 
-### Retriever
+<!-- ### Retriever
 
 Given a query, searches for similar documents, reranks the result and applies LLM chain filter before returning the response.
 
