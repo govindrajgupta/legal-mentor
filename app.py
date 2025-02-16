@@ -89,18 +89,100 @@ async def ask_chain(question: str, chain):
 
 
 def show_upload_documents():
+    custom_css()
+    
+    # Add animated CSS
+    st.markdown("""
+        <style>
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px #4ca1af; }
+            50% { box-shadow: 0 0 25px #4ca1af, 0 0 50px #2c3e50; }
+            100% { box-shadow: 0 0 5px #4ca1af; }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .glowing {
+            animation: glow 3s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+        .glowing:hover {
+            transform: scale(1.05);
+        }
+        .uploaded-file {
+            border: 2px #4ca1af;
+            border-radius: 25px;
+            padding: 10px;
+            animation: glow 3s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+        .uploaded-file:hover {
+            background: rgba(76, 161, 175, 0.1);
+        }
+        .feature-icon {
+            font-size: 1em;
+            margin-right: 5px;
+            display: inline-block;
+        }
+        .title {
+            animation: slideIn 1s ease-out;
+            
+        }
+        .subtitle {
+            animation: slideIn 1s ease-out 0.5s backwards;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     holder = st.empty()
     with holder.container():
-        st.header("LegalMentor")
-        st.subheader("**Understand Legal Documents with Ease**")
-        uploaded_files = st.file_uploader(
-            label="Upload PDF files", type=["pdf"], accept_multiple_files=True
-        )
+        st.markdown("<div class='floating'><h3 class='title'>LegalMentor 🗽</h3></div>", unsafe_allow_html=True)
+        st.markdown("<p class='subtitle glowing'>Your AI-Powered Legal Assistant</p>", unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            uploaded_files = st.file_uploader(
+                label="📄 Drop your PDF documents here",
+                type=["pdf"],
+                accept_multiple_files=True,
+                help="Upload one or multiple PDF files to get started"
+            )
+            
+        with col2:
+            st.markdown("""
+                ### ✨ Smart Features
+                <div class='feature-icon'>🔍</div> Smart legal insights<br>
+                <div class='feature-icon'>⚖️</div> Contract review<br>
+                <div class='feature-icon'>🔐</div> Privacy protection<br>
+                <div class='feature-icon'>📋</div> Legal summary generation<br>
+                <div class='feature-icon'>📈</div> Risk assessment
+            """, unsafe_allow_html=True)
+    
     if not uploaded_files:
-        st.warning("Please upload PDF documents to continue!")
+        st.warning("👆 Please upload your legal documents to begin the analysis")
+        st.markdown("""
+            <div class='uploaded-file'>
+                <h3>📥 Waiting for documents...</h3>
+                <p>Supported format: PDF</p>
+            </div>
+        """, unsafe_allow_html=True)
         st.stop()
 
-    with st.spinner("Analyzing your document(s)..."):
+    with st.spinner("🔄 Processing your documents..."):
+        progress_bar = st.progress(0)
+        for i in range(100):
+            progress_bar.progress(i + 1)
+            if i % 25 == 0:
+                st.markdown(random.choice(LOADING_MESSAGES))
+            asyncio.sleep(0.01)
         holder.empty()
         return build_qa_chain(uploaded_files)
 
@@ -130,15 +212,6 @@ def show_chat_input(chain):
 
 st.set_page_config(page_title="LegalMentor", page_icon="⚖️")
 
-st.html(
-    """
-    <style>
-        .stButton>button { background-color: #007BFF; color: white; border-radius: 12px; padding: 10px 24px; }
-        .stFileUploader { border: 2px dashed #4CAF50; padding: 20px; border-radius: 12px; }
-        .stTextInput>div>div>input { border-radius: 8px; }
-    </style>
-    """
-)
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
