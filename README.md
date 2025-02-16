@@ -1,4 +1,4 @@
-<!-- 
+
 
 > Completely local RAG with chat UI
 
@@ -42,7 +42,7 @@ Start RagBase:
 ```sh
 poetry run streamlit run app.py
 ```
-
+<!-- 
 <!-- ## Architecture
 
 <a href="https://www.mlexpert.io/bootcamp" target="_blank">
@@ -61,7 +61,7 @@ Given a query, searches for similar documents, reranks the result and applies LL
 
 Combines the LLM with the retriever to answer a given user question
 
-## Tech Stack
+ ## Tech Stack
 
 - [Ollama](https://ollama.com/) - run local LLM
 - [Groq API](https://groq.com/) - fast inference for mutliple LLMs
@@ -72,7 +72,7 @@ Combines the LLM with the retriever to answer a given user question
 - [Streamlit](https://streamlit.io/) - build UI for data apps
 - [PDFium](https://pdfium.googlesource.com/pdfium/) - PDF processing and text extraction -->
 
-<!-- ## Add Groq API Key (Optional)
+# Add Groq API Key (Optional)
 
 You can also use the Groq API to replace the local LLM, for that you'll need a `.env` file with Groq API key:
 

@@ -14,17 +14,47 @@ from ragbase.uploader import upload_files
 load_dotenv()
 
 LOADING_MESSAGES = [
-    "Calculating your answer through multiverse...",
-    "Adjusting quantum entanglement...",
-    "Summoning star wisdom... almost there!",
-    "Consulting Schrödinger's cat...",
-    "Warping spacetime for your response...",
-    "Balancing neutron star equations...",
-    "Analyzing dark matter... please wait...",
-    "Engaging hyperdrive... en route!",
-    "Gathering photons from a galaxy...",
-    "Beaming data from Andromeda... stand by!",
+    "🔍 Analyzing your legal documents...",
+    "⚖️ Cross-referencing legal clauses...",
+    "📚 Diving into your case files...",
+    "🧠 Decoding legal complexities...",
+    "📊 Extracting key legal insights...",
+    "💼 Summarizing contractual obligations...",
 ]
+def custom_css():
+    st.markdown(
+        """
+        <style>
+        body {
+            background: linear-gradient(to right, #2c3e50, #4ca1af);
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .st-emotion-cache-p4micv {
+            width: 3rem;
+            height: 3rem;
+        }
+        .title {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .uploaded-file {
+            border: 2px dashed #fff;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_resource(show_spinner=False)
@@ -61,8 +91,8 @@ async def ask_chain(question: str, chain):
 def show_upload_documents():
     holder = st.empty()
     with holder.container():
-        st.header("RagBase")
-        st.subheader("Get answers from your documents")
+        st.header("LegalMentor")
+        st.subheader("**Understand Legal Documents with Ease**")
         uploaded_files = st.file_uploader(
             label="Upload PDF files", type=["pdf"], accept_multiple_files=True
         )
@@ -98,17 +128,16 @@ def show_chat_input(chain):
         asyncio.run(ask_chain(prompt, chain))
 
 
-st.set_page_config(page_title="RagBase", page_icon="🐧")
+st.set_page_config(page_title="LegalMentor", page_icon="⚖️")
 
 st.html(
     """
-<style>
-    .st-emotion-cache-p4micv {
-        width: 2.75rem;
-        height: 2.75rem;
-    }
-</style>
-"""
+    <style>
+        .stButton>button { background-color: #007BFF; color: white; border-radius: 12px; padding: 10px 24px; }
+        .stFileUploader { border: 2px dashed #4CAF50; padding: 20px; border-radius: 12px; }
+        .stTextInput>div>div>input { border-radius: 8px; }
+    </style>
+    """
 )
 
 if "messages" not in st.session_state:
@@ -123,7 +152,7 @@ if Config.CONVERSATION_MESSAGES_LIMIT > 0 and Config.CONVERSATION_MESSAGES_LIMIT
     st.session_state.messages
 ):
     st.warning(
-        "You have reached the conversation limit. Refresh the page to start a new conversation."
+        "⚠️ You have reached the conversation limit. Refresh the page to start a new conversation."
     )
     st.stop()
 
