@@ -1,4 +1,4 @@
-
+<!-- 
 
 > Completely local RAG with chat UI
 
@@ -43,13 +43,13 @@ Start RagBase:
 poetry run streamlit run app.py
 ```
 
-## Architecture
+<!-- ## Architecture
 
 <a href="https://www.mlexpert.io/bootcamp" target="_blank">
   <img src="https://raw.githubusercontent.com/curiousily/ragbase/master/.github/architecture.png">
-</a>
+</a> -->
 
-### Ingestor
+<!-- ### Ingestor
 
 Extracts text from PDF documents and creates chunks (using semantic and character splitter) that are stored in a vector databse
 
@@ -70,12 +70,12 @@ Combines the LLM with the retriever to answer a given user question
 - [FlashRank](https://github.com/PrithivirajDamodaran/FlashRank) - fast reranking
 - [FastEmbed](https://qdrant.github.io/fastembed/) - lightweight and fast embedding generation
 - [Streamlit](https://streamlit.io/) - build UI for data apps
-- [PDFium](https://pdfium.googlesource.com/pdfium/) - PDF processing and text extraction
+- [PDFium](https://pdfium.googlesource.com/pdfium/) - PDF processing and text extraction -->
 
-## Add Groq API Key (Optional)
+<!-- ## Add Groq API Key (Optional)
 
 You can also use the Groq API to replace the local LLM, for that you'll need a `.env` file with Groq API key:
 
 ```sh
-GROQ_API_KEY=YOUR API KEY
-```
+GROQ_API_KEY=YOUR API KEY -->
+``` -->
