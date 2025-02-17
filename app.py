@@ -2,6 +2,10 @@ import asyncio
 import random
 import time
 from datetime import datetime
+import pytesseract
+from pdf2image import convert_from_bytes
+from PyPDF2 import PdfReader
+import re
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -33,114 +37,180 @@ COMMON_QUESTIONS = [
     "What is the duration of this agreement?",
 ]
 
+
+st.set_page_config(page_title="LegalMentor", page_icon="⚖️")
+
+
 def custom_css():
     st.markdown(
         """
         <style>
+        /* Base styles */
         body {
-            background: linear-gradient(to right, #2c3e50, #4ca1af);
-            color: #fff;
-            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to right, #1a1a2e, #16213e);
+            color: #e6e6e6;
+            font-family: 'Inter', sans-serif;
         }
-        .st-emotion-cache-p4micv {
-            width: 3rem;
-            height: 3rem;
-        }
+        
+        /* Title & Header */
         .title {
             text-align: center;
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 0.2rem;
+            background: linear-gradient(45deg, #4ca1af, #2c3e50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: float 3s ease-in-out infinite;
         }
+        
         .subtitle {
             text-align: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            color: #a8dadc;
             margin-bottom: 2rem;
         }
-        .uploaded-file {
-            border: 2px dashed #fff;
+        
+        /* File uploader */
+        .stFileUploader > div {
+            border: 2px dashed #4ca1af !important;
+            border-radius: 15px !important;
+            background: rgba(76, 161, 175, 0.1) !important;
+            transition: all 0.3s ease;
+        }
+        
+        .stFileUploader:hover > div {
+            border-color: #a8dadc !important;
+            background: rgba(168, 218, 220, 0.1) !important;
+        }
+        
+        /* Chat messages */
+        .stChatMessage {
+            border-radius: 15px;
+            margin: 10px 0;
+            padding: 15px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* User message */
+        [data-testid="stChatMessage"]:has(div:first-child > img[alt="user-avatar"]) {
+            background: rgba(76, 161, 175, 0.15);
+            border-left: 4px solid #4ca1af;
+        }
+        
+        /* Assistant message */
+        [data-testid="stChatMessage"]:has(div:first-child > img[alt="assistant-avatar"]) {
+            background: rgba(44, 62, 80, 0.15);
+            border-left: 4px solid #2c3e50;
+        }
+        
+        /* Quick actions */
+        .quick-action-btn {
+            flex: 1;
+            padding: 12px;
             border-radius: 10px;
-            padding: 20px;
-            text-align: center;
+            border: none;
+            background: rgba(76, 161, 175, 0.2);
+            color: #a8dadc;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+            margin: 4px;
         }
-        .chat-info {
-            font-size: 0.8rem;
-            color: #888;
-            text-align: right;
-            margin-top: -10px;
+        
+        .quick-action-btn:hover {
+            background: rgba(76, 161, 175, 0.3);
+            transform: translateY(-2px);
         }
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            .subtitle {
+                font-size: 1rem;
+            }
+            .stChatMessage {
+                padding: 12px 15px;
+                margin: 8px 0;
+            }
+            .quick-action-btn {
+                padding: 10px;
+                font-size: 0.85em;
+            }
+            [data-testid="stVerticalBlock"] {
+                gap: 0.5rem;
+            }
         }
-        .action-button {
-            padding: 5px 10px;
-            border-radius: 5px;
-            border: 1px solid #4ca1af;
-            background: transparent;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s;
+        
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
-        .action-button:hover {
-            background: #4ca1af;
+        
+        @keyframes gradientPulse {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
-        .document-stats {
-            background: rgba(76, 161, 175, 0.1);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
+        
+        /* Progress bar */
+        .stProgress > div > div > div {
+            background: linear-gradient(90deg, #4ca1af 0%, #2c3e50 100%);
+            height: 8px;
+            border-radius: 4px;
         }
-        /* Enhanced mobile responsiveness */
-@media (max-width: 768px) {
-    .quick-actions {
-        flex-direction: column;
-        gap: 5px;
-    }
-    .action-button {
-        width: 100%;
-        font-size: 0.9em;
-        padding: 8px;
-    }
-    .title {
-        font-size: 2.8rem;
-    }
-    .subtitle {
-        font-size: 1.2rem;
-    }
-    .document-stats {
-        font-size: 0.9em;
-    }
-}
-
-/* Updated quick action buttons */
-.stButton > button {
-    width: 100%;
-    height: auto;
-    padding: 8px 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.9em;
-    margin: 2px 0;
-}
-
-/* Improved button visibility */
-.stButton > button:hover {
-    background-color: rgba(76, 161, 175, 0.2) !important;
-    border-color: #4ca1af !important;
-}
-
-/* Container adjustments */
-.st-emotion-cache-1y4p8pa {
-    max-width: 100%;
-    padding: 0 5px;
-}
+        
+        /* Chat input */
+        .stTextInput input {
+            background: rgba(255,255,255,0.1) !important;
+            border: 1px solid #4ca1af !important;
+            color: #fff !important;
+            border-radius: 12px !important;
+            padding: 12px 16px !important;
+        }
+        
+        /* Source documents */
+        [data-testid="stExpander"] {
+            background: rgba(44, 62, 80, 0.2) !important;
+            border-radius: 12px !important;
+            margin: 10px 0 !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+
+def extract_text_from_pdf(uploaded_files):
+    extracted_text = ""
+    for uploaded_file in uploaded_files:
+        pdf = PdfReader(uploaded_file)
+        for page in pdf.pages:
+            extracted_text += page.extract_text() or ""
+        
+        # OCR for image-based PDFs
+        images = convert_from_bytes(uploaded_file.getvalue())
+        for image in images:
+            extracted_text += pytesseract.image_to_string(image)
+            
+    return extracted_text
+
+# Identify legal keywords
+IMPORTANT_TERMS = [
+    "obligation", "liability", "termination", "confidentiality", "payment", "indemnity"
+]
+
+def highlight_important_content(text):
+    highlighted = ""
+    for line in text.split("\n"):
+        if any(term in line.lower() for term in IMPORTANT_TERMS):
+            highlighted += f"⚠️ **{line}**\n"
+        else:
+            highlighted += line + "\n"
+    return highlighted
 
 
 # New feature: Document statistics
@@ -249,51 +319,39 @@ def show_upload_documents():
     
     holder = st.empty()
     with holder.container():
-        st.markdown("<div class='floating'><h2 class='title'>LegalMentor 🗽</h2></div>", unsafe_allow_html=True)
-        st.markdown("<p class='subtitle glowing'>Your AI-Powered Legal Assistant</p>", unsafe_allow_html=True)
+        st.markdown("<h1 class='title'>LegalMentor ⚖️</h1>", unsafe_allow_html=True)
+        st.markdown("<p class='subtitle'>AI-Powered Contract Analysis & Legal Insights</p>", unsafe_allow_html=True)
         
-        col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2, 1], gap="medium")
         
         with col1:
             uploaded_files = st.file_uploader(
-                label="📄 Drop your PDF documents here",
+                "Upload Legal Documents",
                 type=["pdf"],
                 accept_multiple_files=True,
-                help="Upload one or multiple PDF files to get started"
+                help="Drag & drop or click to upload contracts/agreements",
+                label_visibility="collapsed"
             )
-             # New feature: Document statistics display
+            
             if uploaded_files:
                 stats = get_document_stats(uploaded_files)
-                st.markdown(
-                    f"""
-                    <div class='document-stats'>
-                        📊 <b>Document Statistics</b><br>
-                        Documents: {stats['count']}<br>
-                        Total Size: {stats['total_size']}<br>
-                        Upload Time: {stats['upload_time']}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            
+                cols = st.columns(3)
+                cols[0].metric("📄 Documents", stats['count'])
+                cols[1].metric("📦 Total Size", stats['total_size'])
+                cols[2].metric("⏱️ Upload Time", stats['upload_time'].split()[1])
+        
         with col2:
             st.markdown("""
-                ### ✨ Smart Features
-                <div class='feature-icon'>🔍</div> Smart legal insights<br>
-                <div class='feature-icon'>⚖️</div> Contract review<br>
-                <div class='feature-icon'>🔐</div> Privacy protection<br>
-                <div class='feature-icon'>📋</div> Legal summary generation<br>
-                <div class='feature-icon'>📈</div> Risk assessment
-            """, unsafe_allow_html=True)
+                ### Key Features
+                ✨ **Smart Analysis**  
+                🔍 **OCR Support**  
+                ⚡ **Quick Insights**  
+                🔒 **Secure Processing**  
+                📱 **Mobile Optimized**
+                """)
     
     if not uploaded_files:
-        st.warning("👆 Please upload your legal documents to begin the analysis")
-        st.markdown("""
-            <div class='uploaded-file'>
-                <h3>📥 Waiting for documents...</h3>
-                <p>Supported format: PDF</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.info("Please upload PDF documents to begin analysis", icon="🙅")
         st.stop()
 
     with st.spinner("🔄 Processing your documents..."):
@@ -370,8 +428,6 @@ def show_chat_input(chain):
             st.markdown(prompt)
         asyncio.run(ask_chain(prompt, chain))
 
-
-st.set_page_config(page_title="LegalMentor", page_icon="⚖️")
 
 
 if "messages" not in st.session_state:
