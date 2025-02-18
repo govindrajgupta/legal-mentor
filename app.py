@@ -5,7 +5,7 @@ from datetime import datetime
 import pytesseract
 from pdf2image import convert_from_bytes
 from PyPDF2 import PdfReader
-import re
+from deep_translator import GoogleTranslator
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -18,6 +18,9 @@ from ragbase.retriever import create_retriever
 from ragbase.uploader import upload_files
 
 load_dotenv()
+
+if 'selected_language' not in st.session_state:
+    st.session_state.selected_language = 'English'
 
 LOADING_MESSAGES = [
     "🔍 Analyzing your legal documents...",
@@ -37,6 +40,10 @@ COMMON_QUESTIONS = [
     "What is the duration of this agreement?",
 ]
 
+SUPPORTED_LANGUAGES = {
+    'English': 'en',
+    'Hindi': 'hi',
+}
 
 st.set_page_config(page_title="LegalMentor", page_icon="⚖️")
 
@@ -267,6 +274,59 @@ async def ask_chain(question: str, chain):
 def show_upload_documents():
     custom_css()
     
+    # Add language selector in sidebar
+    if 'selected_language' not in st.session_state:
+        st.session_state.selected_language = 'English'
+    
+    st.sidebar.title("Settings")
+    
+    # Analysis settings
+    # Analysis settings in sidebar
+    st.sidebar.subheader("Analysis Settings")
+    st.session_state.analysis_depth = st.sidebar.select_slider(
+        "Analysis Depth",
+        options=["Quick Scan", "Standard", "Deep Analysis"],
+        value="Standard",
+        help="Controls how thoroughly the AI analyzes documents"
+    )
+
+    st.session_state.legal_focus = st.sidebar.multiselect(
+        "Focus Areas",
+        ["Obligations", "Risks", "Deadlines", "Financial Terms", "Compliance", "Intellectual Property"],
+        default=["Obligations", "Risks"],
+        help="Select areas to emphasize in the analysis"
+    )
+
+    # Language selection
+    st.sidebar.subheader("Select Language")
+    st.sidebar.selectbox(
+        "Select Language",
+        options=list(SUPPORTED_LANGUAGES.keys()),
+        key='selected_language'
+    )
+
+    # Apply analysis depth to processing
+    if st.session_state.analysis_depth == "Quick Scan":
+        Config.CHUNK_SIZE = 1000
+        Config.CHUNK_OVERLAP = 100
+    elif st.session_state.analysis_depth == "Deep Analysis":
+        Config.CHUNK_SIZE = 3000
+        Config.CHUNK_OVERLAP = 500
+
+    # Update important terms based on focus areas
+    focus_terms = {
+        "Obligations": ["shall", "must", "required", "obligation"],
+        "Risks": ["liability", "damage", "breach", "penalty"],
+        "Deadlines": ["deadline", "within", "by", "date"],
+        "Financial Terms": ["payment", "fee", "cost", "price"],
+        "Compliance": ["comply", "regulation", "law", "policy"],
+        "Intellectual Property": ["patent", "copyright", "trademark", "ip"]
+    }
+    
+    IMPORTANT_TERMS.extend([
+        term for focus in st.session_state.legal_focus
+        for term in focus_terms.get(focus, [])
+    ])
     # Add animated CSS
     st.markdown("""
         <style>
@@ -366,28 +426,37 @@ def show_upload_documents():
 
 
 def show_message_history():
+    target_lang = SUPPORTED_LANGUAGES[st.session_state.selected_language]
+    
     for message in st.session_state.messages:
         role = message["role"]
+        content = message["content"]
+        
+        # Translate message content
+        translated_content = translate_text(content, target_lang)
+        
         avatar_path = (
             Config.Path.IMAGES_DIR / "assistant-avatar.png"
             if role == "assistant"
             else Config.Path.IMAGES_DIR / "user-avatar.png"
         )
         with st.chat_message(role, avatar=str(avatar_path)):
-            st.markdown(message["content"])
+            st.markdown(translated_content)
             if "timestamp" in message:
                 st.markdown(f"<div class='chat-info'>{message['timestamp']}</div>", unsafe_allow_html=True)
 
 def show_quick_actions():
+    target_lang = SUPPORTED_LANGUAGES[st.session_state.selected_language]
+    
     st.markdown("<div class='quick-actions'>", unsafe_allow_html=True)
     
-    # Create buttons with shorter, clearer text
+    # Translate button texts
     quick_button_texts = [
-        "📋 Main Obligations",
-        "🚫 Termination Terms",
-        "💰 Payment Terms",
-        "🔒 Confidentiality",
-        "⏱️ Duration"
+        translate_text("📋 Main Obligations", target_lang),
+        translate_text("🚫 Termination Terms", target_lang),
+        translate_text("💰 Payment Terms", target_lang),
+        translate_text("🔒 Confidentiality", target_lang),
+        translate_text("⏱️ Duration", target_lang)
     ]
     
     rows = [quick_button_texts[i:i+2] for i in range(0, len(quick_button_texts), 2)]
@@ -409,35 +478,77 @@ def show_quick_actions():
 
 
 def show_chat_input(chain):
-    #store chain in session state for quick actions
+    target_lang = SUPPORTED_LANGUAGES[st.session_state.selected_language]
+    source_lang = SUPPORTED_LANGUAGES[st.session_state.selected_language]
+    
     st.session_state.chain = chain
-
-    #show quick actions suggestions
     show_quick_actions()
 
-    if prompt := st.chat_input("Ask your question here"):
+    placeholder_text = translate_text("Ask your question here", target_lang)
+    
+    if prompt := st.chat_input(placeholder_text):
+        # Translate user input to English for processing
+        english_prompt = translate_text(prompt, 'en', source_lang)
+        
         st.session_state.messages.append({
             "role": "user", 
-            "content": prompt,
+            "content": prompt,  # Store original prompt
+            "translated_content": english_prompt,  # Store translated prompt
             "timestamp": datetime.now().strftime("%H:%M:%S")
-         })
-        with st.chat_message(
-            "user",
-            avatar=str(Config.Path.IMAGES_DIR / "user-avatar.png"),
-        ):
+        })
+        
+        with st.chat_message("user", avatar=str(Config.Path.IMAGES_DIR / "user-avatar.png")):
             st.markdown(prompt)
-        asyncio.run(ask_chain(prompt, chain))
+        
+        # Use translated prompt for processing
+        asyncio.run(ask_chain(english_prompt, chain))
 
 
+def translate_text(text: str, target_lang: str, source_lang: str = 'en') -> str:
+    """Translate text to target language."""
+    try:
+        if target_lang == source_lang:
+            return text
+        translator = GoogleTranslator(source=source_lang, target=target_lang)
+        return translator.translate(text)
+    except Exception as e:
+        st.error(f"Translation error: {str(e)}")
+        return text
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": "Hi! What do you want to know about your documents?",
-            "timestamp": datetime.now().strftime("%H:%M:%S")
-        }
+
+def get_loading_messages(target_lang):
+    messages = [
+        "🔍 Analyzing your legal documents...",
+        "⚖️ Cross-referencing legal clauses...",
+        "📚 Diving into your case files...",
+        "🧠 Decoding legal complexities...",
+        "📊 Extracting key legal insights...",
+        "💼 Summarizing contractual obligations...",
     ]
+    return [translate_text(msg, target_lang) for msg in messages]
+
+# Update LOADING_MESSAGES usage in the code
+LOADING_MESSAGES = get_loading_messages(SUPPORTED_LANGUAGES[st.session_state.selected_language])
+
+
+def initialize_app():
+    if 'messages' not in st.session_state:
+        initial_message = "Hi! What do you want to know about your documents?"
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": initial_message,
+                "timestamp": datetime.now().strftime("%H:%M:%S")
+            }
+        ]
+    
+    # Update loading messages based on selected language
+    global LOADING_MESSAGES
+    target_lang = SUPPORTED_LANGUAGES[st.session_state.selected_language]
+    LOADING_MESSAGES = get_loading_messages(target_lang)
+
+
+initialize_app()
 
 if Config.CONVERSATION_MESSAGES_LIMIT > 0 and Config.CONVERSATION_MESSAGES_LIMIT <= len(
     st.session_state.messages
