@@ -22,11 +22,10 @@ ollama pull gemma2:9b
 
 Extracts text from PDF documents and creates chunks (using semantic and character splitter) that are stored in a vector databse
 
-<!-- ### Retriever
+ ### Retriever
 
 Given a query, searches for similar documents, reranks the result and applies LLM chain filter before returning the response.
 
 ### QA Chain
 
-Combines the LLM with the retriever to answer a given user question
-
+Combines the LLM with the retriever to answer a given user question.
